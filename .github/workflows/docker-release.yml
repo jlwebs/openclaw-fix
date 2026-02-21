@@ -31,7 +31,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up QEMU (for multi-platform builds)
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build project
+        run: pnpm build
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openclaw-dist
+          path: dist/
+          retention-days: 7
+
+      - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
@@ -60,17 +84,13 @@ jobs:
             version="${GITHUB_REF#refs/tags/v}"
             tags+=("${IMAGE}:${version}")
           fi
-          if [[ ${#tags[@]} -eq 0 ]]; then
-            echo "::error::No tags resolved for ref ${GITHUB_REF}"
-            exit 1
-          fi
           {
             echo "value<<EOF"
             printf "%s\n" "${tags[@]}"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Build and push multi-platform image
+      - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
