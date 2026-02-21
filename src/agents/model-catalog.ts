@@ -31,6 +31,45 @@ const CODEX_PROVIDER = "openai-codex";
 const OPENAI_CODEX_GPT53_MODEL_ID = "gpt-5.3-codex";
 const OPENAI_CODEX_GPT53_SPARK_MODEL_ID = "gpt-5.3-codex-spark";
 
+const GOOGLE_PROVIDER = "google";
+const GOOGLE_GEMINI_31_PRO_PREVIEW_MODEL_ID = "gemini-3.1-pro-preview";
+const GOOGLE_GEMINI_31_PRO_MODEL_ID = "gemini-3.1-pro";
+
+function applyGemini31PreviewFallback(models: ModelCatalogEntry[]): void {
+  const hasPreview = models.some(
+    (entry) =>
+      entry.provider === GOOGLE_PROVIDER &&
+      entry.id.toLowerCase() === GOOGLE_GEMINI_31_PRO_PREVIEW_MODEL_ID,
+  );
+  if (hasPreview) {
+    return;
+  }
+
+  const baseModel = models.find(
+    (entry) =>
+      entry.provider === GOOGLE_PROVIDER &&
+      entry.id.toLowerCase() === GOOGLE_GEMINI_31_PRO_MODEL_ID,
+  );
+  if (baseModel) {
+    models.push({
+      ...baseModel,
+      id: GOOGLE_GEMINI_31_PRO_PREVIEW_MODEL_ID,
+      name: "Gemini 3.1 Pro Preview",
+    });
+    return;
+  }
+
+  // No base model found — inject a reasonable default so the model is selectable.
+  models.push({
+    id: GOOGLE_GEMINI_31_PRO_PREVIEW_MODEL_ID,
+    name: "Gemini 3.1 Pro Preview",
+    provider: GOOGLE_PROVIDER,
+    contextWindow: 2000000,
+    reasoning: true,
+    input: ["text", "image"],
+  });
+}
+
 function applyOpenAICodexSparkFallback(models: ModelCatalogEntry[]): void {
   const hasSpark = models.some(
     (entry) =>
@@ -62,6 +101,7 @@ export function resetModelCatalogCacheForTest() {
   importPiSdk = defaultImportPiSdk;
 }
 
+
 // Test-only escape hatch: allow mocking the dynamic import to simulate transient failures.
 export function __setModelCatalogImportForTest(loader?: () => Promise<PiSdkModule>) {
   importPiSdk = loader ?? defaultImportPiSdk;
@@ -72,7 +112,7 @@ function createAuthStorage(AuthStorageLike: unknown, path: string) {
   if (typeof withFactory.create === "function") {
     return withFactory.create(path);
   }
-  return new (AuthStorageLike as { new (path: string): unknown })(path);
+  return new (AuthStorageLike as { new(path: string): unknown })(path);
 }
 
 export async function loadModelCatalog(params?: {
@@ -111,14 +151,14 @@ export async function loadModelCatalog(params?: {
       const { join } = await import("node:path");
       const authStorage = createAuthStorage(piSdk.AuthStorage, join(agentDir, "auth.json"));
       const registry = new (piSdk.ModelRegistry as unknown as {
-        new (
+        new(
           authStorage: unknown,
           modelsFile: string,
         ):
           | Array<DiscoveredModel>
           | {
-              getAll: () => Array<DiscoveredModel>;
-            };
+            getAll: () => Array<DiscoveredModel>;
+          };
       })(authStorage, join(agentDir, "models.json"));
       const entries = Array.isArray(registry) ? registry : registry.getAll();
       for (const entry of entries) {
@@ -140,6 +180,8 @@ export async function loadModelCatalog(params?: {
         models.push({ id, name, provider, contextWindow, reasoning, input });
       }
       applyOpenAICodexSparkFallback(models);
+      applyGemini31PreviewFallback(models);
+
 
       if (models.length === 0) {
         // If we found nothing, don't cache this result so we can try again.
