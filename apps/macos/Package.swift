@@ -1,4 +1,4 @@
-// swift-tools-version: 6.2
+// swift-tools-version: 6.0
 // Package manifest for the OpenClaw macOS companion (menu bar app + IPC library).
 
 import PackageDescription
@@ -19,7 +19,7 @@ let package = Package(
         .package(url: "https://github.com/swiftlang/swift-subprocess.git", from: "0.1.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.8.0"),
         .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.8.1"),
-        .package(url: "https://github.com/steipete/Peekaboo.git", branch: "main"),
+        .package(url: "https://github.com/steipete/Peekaboo.git", revision: "a55cd73d68ca276af62d5ef182ccce9149a4b522"),
         .package(path: "../shared/OpenClawKit"),
         .package(path: "../../Swabble"),
     ],
