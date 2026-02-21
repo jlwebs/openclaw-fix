@@ -8,12 +8,15 @@ on:
 jobs:
   build-mac:
     name: Build macOS DMG
-    runs-on: macos-latest
+    runs-on: macos-15
     permissions:
       contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Debug Swift Version
+        run: swift --version
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
